@@ -1,0 +1,13 @@
+services:
+  frontend:
+    build: ./front
+    ports:
+      - "3000:3000"
+
+  # backend:
+  #   build: ./back
+  #   ports:
+  #     - "8000:8000"
+
+  db:
+    image: mysql:8
