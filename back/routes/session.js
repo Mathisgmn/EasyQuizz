@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const { config, parseDurationToMs, resolveVoteEndsAt } = require("../config");
 const { createVoteSession, getCurrentConfig } = require("../db");
 const authMiddleware = require("../middleware/auth");
@@ -67,7 +68,10 @@ router.post("/session", authMiddleware, async (req, res) => {
 
 router.get("/session/reload", authMiddleware, async (req, res) => {
   try {
-    require("dotenv").config();
+    require("dotenv").config({
+      path: path.resolve(__dirname, "..", "..", ".env"),
+      override: true
+    });
 
     const question = String(process.env.VOTE_QUESTION || "").trim();
     const choices = [
