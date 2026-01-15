@@ -1,0 +1,18 @@
+image: node:20
+
+stages:
+  - lint
+
+lint:back:
+  stage: lint
+  script:
+    - cd back
+    - npm install --no-save --ignore-scripts eslint@9.18.0
+    - npx eslint .
+
+lint:front:
+  stage: lint
+  script:
+    - cd front
+    - npm install --no-save --ignore-scripts eslint@9.18.0 eslint-plugin-vue@9.32.0 vue-eslint-parser@9.4.2 @typescript-eslint/parser@8.20.0
+    - npx eslint .
