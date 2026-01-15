@@ -107,6 +107,7 @@ import { onBeforeUnmount, onMounted, reactive, ref, computed, watch } from 'vue'
 const config = useRuntimeConfig()
 const backendUrl = config.public.backendUrl
 const route = useRoute()
+const router = useRouter()
 
 const form = reactive({
   username: '',
@@ -122,10 +123,11 @@ const voteMessage = ref('')
 const hasVoted = ref(false)
 const pollingInterval = ref(null)
 const isRegisterMode = ref(true)
+const qrNotice = ref('')
 const authNotice = computed(() => {
-  return typeof route.query.authMessage === 'string'
-    ? route.query.authMessage
-    : ''
+  const routeNotice =
+    typeof route.query.authMessage === 'string' ? route.query.authMessage : ''
+  return routeNotice || qrNotice.value
 })
 
 const isVoteClosed = computed(() => {
@@ -180,6 +182,7 @@ const submitAuth = async () => {
     await loadPollConfig()
     await refreshResults()
     startPolling()
+    await ensureQrVote(route.query.choiceId)
   } catch (error) {
     authError.value = 'Impossible de joindre le serveur.'
   }
@@ -197,6 +200,7 @@ const logout = () => {
   voteStats.totalVotes = 0
   voteStats.results = []
   hasVoted.value = false
+  qrNotice.value = ''
   window.localStorage.removeItem('quizzy.token')
   window.localStorage.removeItem('quizzy.username')
   window.localStorage.removeItem('quizzy.voted')
@@ -252,7 +256,7 @@ const refreshResults = async () => {
 }
 
 const castVote = async (choiceId) => {
-  if (hasVoted.value || isVoteClosed.value) return
+  if (hasVoted.value || isVoteClosed.value) return false
   voteMessage.value = ''
 
   try {
@@ -269,15 +273,45 @@ const castVote = async (choiceId) => {
 
     if (!response.ok) {
       voteMessage.value = data?.error || 'Impossible de voter.'
-      return
+      return false
     }
 
     hasVoted.value = true
     window.localStorage.setItem('quizzy.voted', 'true')
     voteMessage.value = 'Merci ! Votre vote a bien été pris en compte.'
     await refreshResults()
+    return true
   } catch (error) {
     voteMessage.value = 'Erreur réseau lors du vote.'
+    return false
+  }
+}
+
+const getChoiceIdFromValue = (value) => {
+  if (Array.isArray(value)) {
+    return getChoiceIdFromValue(value[0])
+  }
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null
+  }
+  return parsed
+}
+
+const ensureQrVote = async (choiceIdValue) => {
+  const choiceId = getChoiceIdFromValue(choiceIdValue)
+  if (!choiceId) return
+  if (!authToken.value) {
+    qrNotice.value = 'Connectez-vous pour valider votre vote.'
+    return
+  }
+
+  const success = await castVote(choiceId)
+  if (success) {
+    qrNotice.value = ''
+    if (route.path === '/vote') {
+      await router.replace({ path: '/', query: {} })
+    }
   }
 }
 
@@ -320,6 +354,8 @@ onMounted(async () => {
     await refreshResults()
     startPolling()
   }
+
+  await ensureQrVote(route.query.choiceId)
 })
 
 onBeforeUnmount(() => {
@@ -331,6 +367,14 @@ watch(isVoteClosed, (closed) => {
     voteMessage.value = 'Le vote est terminé.'
   }
 })
+
+watch(
+  () => route.query.choiceId,
+  async (choiceIdValue) => {
+    await ensureQrVote(choiceIdValue)
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
