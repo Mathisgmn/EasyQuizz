@@ -1,4 +1,3 @@
-# Utilise Node 20 en version légère
 FROM node:20-alpine
 
 

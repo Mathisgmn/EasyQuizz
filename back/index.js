@@ -49,22 +49,22 @@ const resolveVoteEndsAt = () => {
 const voteEndsAt = resolveVoteEndsAt();
 
 const config = {
-  question: process.env.VOTE_QUESTION || "How much meow per day would you like ?",
+  question: process.env.VOTE_QUESTION,
   voteEndsAt,
   choices: [
     {
       id: 1,
-      label: process.env.QR1_LABEL || "1 Meow is nice",
+      label: process.env.QR1_LABEL,
       qrCodeUrl: "/qrcodes/1"
     },
     {
       id: 2,
-      label: process.env.QR2_LABEL || "2 Meow is better",
+      label: process.env.QR2_LABEL,
       qrCodeUrl: "/qrcodes/2"
     },
     {
       id: 3,
-      label: process.env.QR3_LABEL || "Yes.",
+      label: process.env.QR3_LABEL,
       qrCodeUrl: "/qrcodes/3"
     }
   ]
