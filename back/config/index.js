@@ -70,5 +70,6 @@ module.exports = {
   PUBLIC_FRONTEND_URL,
   QR_STORAGE_PATH,
   config,
+  parseDurationToMs,
   resolveVoteEndsAt
 };

@@ -1,6 +1,5 @@
 const express = require("express");
-const { config } = require("../config");
-const { query } = require("../db");
+const { query, getCurrentConfig } = require("../db");
 const { verifyToken } = require("../utils/tokens");
 
 const router = express.Router();
@@ -25,11 +24,13 @@ router.post("/vote", async (req, res) => {
     return res.status(400).json({ error: "Missing choiceId or userToken" });
   }
 
-  if (Date.now() > new Date(config.voteEndsAt).getTime()) {
-    return res.status(403).json({ error: "Vote has ended" });
-  }
-
   try {
+    const currentConfig = await getCurrentConfig();
+
+    if (Date.now() > new Date(currentConfig.voteEndsAt).getTime()) {
+      return res.status(403).json({ error: "Vote has ended" });
+    }
+
     const payload = verifyToken(userToken);
     const username = payload.username;
 
