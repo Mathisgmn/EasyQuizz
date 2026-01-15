@@ -2,6 +2,8 @@ const path = require("path");
 
 const PORT = process.env.PORT || 8000;
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
+const PUBLIC_FRONTEND_URL =
+  process.env.PUBLIC_FRONTEND_URL || "http://localhost:3000";
 const QR_STORAGE_PATH =
   process.env.QR_STORAGE_PATH || path.join(__dirname, "..", "qrcodes");
 
@@ -65,6 +67,7 @@ const config = {
 module.exports = {
   PORT,
   JWT_SECRET,
+  PUBLIC_FRONTEND_URL,
   QR_STORAGE_PATH,
   config,
   resolveVoteEndsAt
