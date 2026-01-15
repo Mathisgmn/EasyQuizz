@@ -124,7 +124,6 @@ const hasVoted = ref(false)
 const pollingInterval = ref(null)
 const isRegisterMode = ref(true)
 const qrNotice = ref('')
-const pendingChoiceId = ref(null)
 const authNotice = computed(() => {
   const routeNotice =
     typeof route.query.authMessage === 'string' ? route.query.authMessage : ''
@@ -183,7 +182,7 @@ const submitAuth = async () => {
     await loadPollConfig()
     await refreshResults()
     startPolling()
-    await ensureQrVote(pendingChoiceId.value)
+    await ensureQrVote(route.query.choiceId)
   } catch (error) {
     authError.value = 'Impossible de joindre le serveur.'
   }
@@ -201,7 +200,6 @@ const logout = () => {
   voteStats.totalVotes = 0
   voteStats.results = []
   hasVoted.value = false
-  pendingChoiceId.value = null
   qrNotice.value = ''
   window.localStorage.removeItem('quizzy.token')
   window.localStorage.removeItem('quizzy.username')
@@ -301,27 +299,16 @@ const getChoiceIdFromValue = (value) => {
   return parsed
 }
 
-const setPendingChoiceId = (choiceId) => {
-  pendingChoiceId.value = choiceId
-  window.localStorage.setItem('quizzy.pendingChoiceId', String(choiceId))
-}
-
-const clearPendingChoiceId = () => {
-  pendingChoiceId.value = null
-  window.localStorage.removeItem('quizzy.pendingChoiceId')
-}
-
-const ensureQrVote = async (choiceId) => {
+const ensureQrVote = async (choiceIdValue) => {
+  const choiceId = getChoiceIdFromValue(choiceIdValue)
   if (!choiceId) return
   if (!authToken.value) {
-    setPendingChoiceId(choiceId)
     qrNotice.value = 'Connectez-vous pour valider votre vote.'
     return
   }
 
   const success = await castVote(choiceId)
   if (success) {
-    clearPendingChoiceId()
     qrNotice.value = ''
     if (route.path === '/vote') {
       await router.replace({ path: '/', query: {} })
@@ -370,11 +357,7 @@ onMounted(async () => {
     startPolling()
   }
 
-  if (storedPending) {
-    pendingChoiceId.value = Number(storedPending)
-  }
-
-  await ensureQrVote(pendingChoiceId.value)
+  await ensureQrVote(route.query.choiceId)
 })
 
 onBeforeUnmount(() => {
@@ -390,8 +373,7 @@ watch(isVoteClosed, (closed) => {
 watch(
   () => route.query.choiceId,
   async (choiceIdValue) => {
-    const choiceId = getChoiceIdFromValue(choiceIdValue)
-    await ensureQrVote(choiceId)
+    await ensureQrVote(choiceIdValue)
   },
   { immediate: true }
 )
