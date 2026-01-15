@@ -1,14 +1,36 @@
 const express = require("express");
+const path = require("path");
 const dotenv = require("dotenv");
 const { createVoteSession, getCurrentConfig } = require("../db");
 const { reloadConfig } = require("../config");
-const authMiddleware = require("../middleware/auth");
 
 const router = express.Router();
 
-router.post("/session/reload", authMiddleware, async (req, res) => {
+const ensureReloadToken = (req, res, next) => {
+  if (!process.env.RELOAD_TOKEN) {
+    return next();
+  }
+
+  const token =
+    req.headers["x-reload-token"] ||
+    req.query.reloadToken ||
+    req.body?.reloadToken;
+  if (!token || token !== process.env.RELOAD_TOKEN) {
+    return res.status(401).json({ error: "Invalid reload token" });
+  }
+
+  return next();
+};
+
+const reloadSession = async (req, res) => {
   try {
-    dotenv.config({ override: true });
+    const envPath = path.resolve(__dirname, "..", ".env");
+    const result = dotenv.config({ path: envPath, override: true });
+    if (result.error) {
+      console.error("Failed to reload .env", result.error);
+      return res.status(500).json({ error: "Failed to reload .env" });
+    }
+
     const nextConfig = reloadConfig();
     await createVoteSession(nextConfig);
     const currentConfig = await getCurrentConfig();
@@ -17,6 +39,9 @@ router.post("/session/reload", authMiddleware, async (req, res) => {
     console.error("Error reloading session", error);
     return res.status(500).json({ error: "Failed to reload session" });
   }
-});
+};
+
+router.get("/session/reload", ensureReloadToken, reloadSession);
+router.post("/session/reload", ensureReloadToken, reloadSession);
 
 module.exports = router;
