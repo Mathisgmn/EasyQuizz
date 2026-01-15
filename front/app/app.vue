@@ -204,6 +204,7 @@ const logout = () => {
   window.localStorage.removeItem('quizzy.token')
   window.localStorage.removeItem('quizzy.username')
   window.localStorage.removeItem('quizzy.voted')
+  window.localStorage.removeItem('quizzy.pendingChoiceId')
   stopPolling()
 }
 
@@ -345,6 +346,7 @@ onMounted(async () => {
   const storedToken = window.localStorage.getItem('quizzy.token')
   const storedUser = window.localStorage.getItem('quizzy.username')
   const storedVoted = window.localStorage.getItem('quizzy.voted')
+  const storedPending = window.localStorage.getItem('quizzy.pendingChoiceId')
 
   if (storedToken) {
     authToken.value = storedToken
