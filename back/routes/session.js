@@ -6,22 +6,6 @@ const { reloadConfig } = require("../config");
 
 const router = express.Router();
 
-const ensureReloadToken = (req, res, next) => {
-  if (!process.env.RELOAD_TOKEN) {
-    return next();
-  }
-
-  const token =
-    req.headers["x-reload-token"] ||
-    req.query.reloadToken ||
-    req.body?.reloadToken;
-  if (!token || token !== process.env.RELOAD_TOKEN) {
-    return res.status(401).json({ error: "Invalid reload token" });
-  }
-
-  return next();
-};
-
 const reloadSession = async (req, res) => {
   try {
     const envPath = path.resolve(__dirname, "..", ".env");
@@ -41,7 +25,7 @@ const reloadSession = async (req, res) => {
   }
 };
 
-router.get("/session/reload", ensureReloadToken, reloadSession);
-router.post("/session/reload", ensureReloadToken, reloadSession);
+router.get("/session/reload", reloadSession);
+router.post("/session/reload", reloadSession);
 
 module.exports = router;
