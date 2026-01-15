@@ -155,6 +155,7 @@ const createVoteSession = async ({ question, voteEndsAt, choices }) => {
   try {
     await client.query("BEGIN");
     await client.query("TRUNCATE votes");
+    await client.query("TRUNCATE vote_session");
 
     const choiceIds = choices.map((choice) => choice.id);
     for (const choice of choices) {

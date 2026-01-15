@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const { config, parseDurationToMs, resolveVoteEndsAt } = require("../config");
 const { createVoteSession, getCurrentConfig } = require("../db");
 const authMiddleware = require("../middleware/auth");
@@ -62,6 +63,30 @@ router.post("/session", authMiddleware, async (req, res) => {
   } catch (error) {
     console.error("Error creating vote session", error);
     return res.status(500).json({ error: "Failed to create vote session" });
+  }
+});
+
+router.get("/session/reload", authMiddleware, async (req, res) => {
+  try {
+    require("dotenv").config({
+      path: path.resolve(__dirname, "..", "..", ".env"),
+      override: true
+    });
+
+    const question = String(process.env.VOTE_QUESTION || "").trim();
+    const choices = [
+      { id: 1, label: String(process.env.QR1_LABEL || "").trim() },
+      { id: 2, label: String(process.env.QR2_LABEL || "").trim() },
+      { id: 3, label: String(process.env.QR3_LABEL || "").trim() }
+    ];
+    const voteEndsAt = resolveVoteEndsAt();
+
+    await createVoteSession({ question, voteEndsAt, choices });
+    const updatedConfig = await getCurrentConfig();
+    return res.json(updatedConfig);
+  } catch (error) {
+    console.error("Error reloading vote session", error);
+    return res.status(500).json({ error: "Failed to reload vote session" });
   }
 });
 
