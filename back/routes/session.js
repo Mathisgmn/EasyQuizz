@@ -65,7 +65,7 @@ router.post("/session", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/session/reload", authMiddleware, async (req, res) => {
+router.get("/session/reload", authMiddleware, async (req, res) => {
   try {
     require("dotenv").config();
 
