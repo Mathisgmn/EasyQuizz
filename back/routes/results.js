@@ -1,12 +1,12 @@
 const express = require("express");
-const { config } = require("../config");
-const { query } = require("../db");
+const { query, getCurrentConfig } = require("../db");
 const authMiddleware = require("../middleware/auth");
 
 const router = express.Router();
 
 router.get("/results", authMiddleware, async (req, res) => {
   try {
+    const currentConfig = await getCurrentConfig();
     const countsResult = await query(
       `
         SELECT choice_id, COUNT(*)::int AS count
@@ -19,7 +19,7 @@ router.get("/results", authMiddleware, async (req, res) => {
       countsResult.rows.map((row) => [row.choice_id, row.count])
     );
 
-    const results = config.choices.map((choice) => ({
+    const results = currentConfig.choices.map((choice) => ({
       choiceId: choice.id,
       label: choice.label,
       count: countsMap.get(choice.id) || 0

@@ -83,12 +83,110 @@ const initDb = async () => {
       );
     }
 
+    const sessionResult = await client.query(
+      `
+        SELECT 1
+        FROM vote_session
+        LIMIT 1
+      `
+    );
+
+    if (sessionResult.rowCount === 0) {
+      await client.query(
+        `
+          INSERT INTO vote_session (question, starts_at, ends_at)
+          VALUES ($1, NOW(), $2)
+        `,
+        [config.question, config.voteEndsAt]
+      );
+    }
+
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  }
+};
+
+const getCurrentConfig = async () => {
+  const sessionResult = await query(
+    `
+      SELECT id, question, ends_at
+      FROM vote_session
+      ORDER BY id DESC
+      LIMIT 1
+    `
+  );
+
+  const choicesResult = await query(
+    `
+      SELECT id, label
+      FROM choices
+      ORDER BY id
+    `
+  );
+
+  if (sessionResult.rowCount === 0) {
+    return {
+      sessionId: null,
+      question: config.question,
+      voteEndsAt: config.voteEndsAt,
+      choices: config.choices
+    };
+  }
+
+  const session = sessionResult.rows[0];
+
+  return {
+    sessionId: session.id,
+    question: session.question,
+    voteEndsAt: new Date(session.ends_at).toISOString(),
+    choices: choicesResult.rows.map((choice) => ({
+      id: choice.id,
+      label: choice.label,
+      qrCodeUrl: `/qrcodes/${choice.id}`
+    }))
+  };
+};
+
+const createVoteSession = async ({ question, voteEndsAt, choices }) => {
+  await connect();
+
+  try {
+    await client.query("BEGIN");
+    await client.query("TRUNCATE votes");
+
+    const choiceIds = choices.map((choice) => choice.id);
+    for (const choice of choices) {
+      await client.query(
+        `
+          INSERT INTO choices (id, label)
+          VALUES ($1, $2)
+          ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label
+        `,
+        [choice.id, choice.label]
+      );
+    }
+
+    if (choiceIds.length > 0) {
+      const placeholders = choiceIds
+        .map((_, index) => `$${index + 1}`)
+        .join(", ");
+      await client.query(
+        `
+          DELETE FROM choices
+          WHERE id NOT IN (${placeholders})
+        `,
+        choiceIds
+      );
+    }
+
     await client.query(
       `
         INSERT INTO vote_session (question, starts_at, ends_at)
         VALUES ($1, NOW(), $2)
       `,
-      [config.question, config.voteEndsAt]
+      [question, voteEndsAt]
     );
 
     await client.query("COMMIT");
@@ -101,5 +199,7 @@ const initDb = async () => {
 module.exports = {
   client,
   query,
-  initDb
+  initDb,
+  getCurrentConfig,
+  createVoteSession
 };

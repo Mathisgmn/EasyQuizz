@@ -6,6 +6,7 @@ const { PORT } = require("./config");
 const { initDb } = require("./db");
 const authRoutes = require("./routes/auth");
 const configRoutes = require("./routes/config");
+const sessionRoutes = require("./routes/session");
 const voteRoutes = require("./routes/vote");
 const resultsRoutes = require("./routes/results");
 const qrCodeRoutes = require("./routes/qrcodes");
@@ -17,6 +18,7 @@ app.use(express.json());
 
 app.use("/auth", authRoutes);
 app.use(configRoutes);
+app.use(sessionRoutes);
 app.use(voteRoutes);
 app.use(resultsRoutes);
 app.use(qrCodeRoutes);

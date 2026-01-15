@@ -203,6 +203,19 @@ const logout = () => {
   stopPolling()
 }
 
+const applyPollConfig = (nextConfig) => {
+  const previousSessionId = pollConfig.value?.sessionId
+  pollConfig.value = nextConfig
+
+  if (previousSessionId && previousSessionId !== nextConfig?.sessionId) {
+    hasVoted.value = false
+    voteMessage.value = ''
+    voteStats.totalVotes = 0
+    voteStats.results = []
+    window.localStorage.removeItem('quizzy.voted')
+  }
+}
+
 const loadPollConfig = async () => {
   if (!authToken.value) return
   const response = await fetch(`${backendUrl}/config`, {
@@ -217,7 +230,8 @@ const loadPollConfig = async () => {
     return
   }
 
-  pollConfig.value = await response.json()
+  const nextConfig = await response.json()
+  applyPollConfig(nextConfig)
 }
 
 const refreshResults = async () => {
@@ -281,6 +295,7 @@ const getChoicePercent = (choiceId) => {
 const startPolling = () => {
   stopPolling()
   pollingInterval.value = window.setInterval(() => {
+    loadPollConfig()
     refreshResults()
   }, 5000)
 }
