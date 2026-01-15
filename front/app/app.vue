@@ -107,6 +107,7 @@ import { onBeforeUnmount, onMounted, reactive, ref, computed, watch } from 'vue'
 const config = useRuntimeConfig()
 const backendUrl = config.public.backendUrl
 const route = useRoute()
+const router = useRouter()
 
 const form = reactive({
   username: '',
@@ -122,10 +123,12 @@ const voteMessage = ref('')
 const hasVoted = ref(false)
 const pollingInterval = ref(null)
 const isRegisterMode = ref(true)
+const qrNotice = ref('')
+const pendingChoiceId = ref(null)
 const authNotice = computed(() => {
-  return typeof route.query.authMessage === 'string'
-    ? route.query.authMessage
-    : ''
+  const routeNotice =
+    typeof route.query.authMessage === 'string' ? route.query.authMessage : ''
+  return routeNotice || qrNotice.value
 })
 
 const isVoteClosed = computed(() => {
@@ -180,6 +183,7 @@ const submitAuth = async () => {
     await loadPollConfig()
     await refreshResults()
     startPolling()
+    await ensureQrVote(pendingChoiceId.value)
   } catch (error) {
     authError.value = 'Impossible de joindre le serveur.'
   }
@@ -197,9 +201,12 @@ const logout = () => {
   voteStats.totalVotes = 0
   voteStats.results = []
   hasVoted.value = false
+  pendingChoiceId.value = null
+  qrNotice.value = ''
   window.localStorage.removeItem('quizzy.token')
   window.localStorage.removeItem('quizzy.username')
   window.localStorage.removeItem('quizzy.voted')
+  window.localStorage.removeItem('quizzy.pendingChoiceId')
   stopPolling()
 }
 
@@ -252,7 +259,7 @@ const refreshResults = async () => {
 }
 
 const castVote = async (choiceId) => {
-  if (hasVoted.value || isVoteClosed.value) return
+  if (hasVoted.value || isVoteClosed.value) return false
   voteMessage.value = ''
 
   try {
@@ -269,15 +276,56 @@ const castVote = async (choiceId) => {
 
     if (!response.ok) {
       voteMessage.value = data?.error || 'Impossible de voter.'
-      return
+      return false
     }
 
     hasVoted.value = true
     window.localStorage.setItem('quizzy.voted', 'true')
     voteMessage.value = 'Merci ! Votre vote a bien été pris en compte.'
     await refreshResults()
+    return true
   } catch (error) {
     voteMessage.value = 'Erreur réseau lors du vote.'
+    return false
+  }
+}
+
+const getChoiceIdFromValue = (value) => {
+  if (Array.isArray(value)) {
+    return getChoiceIdFromValue(value[0])
+  }
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null
+  }
+  return parsed
+}
+
+const setPendingChoiceId = (choiceId) => {
+  pendingChoiceId.value = choiceId
+  window.localStorage.setItem('quizzy.pendingChoiceId', String(choiceId))
+}
+
+const clearPendingChoiceId = () => {
+  pendingChoiceId.value = null
+  window.localStorage.removeItem('quizzy.pendingChoiceId')
+}
+
+const ensureQrVote = async (choiceId) => {
+  if (!choiceId) return
+  if (!authToken.value) {
+    setPendingChoiceId(choiceId)
+    qrNotice.value = 'Connectez-vous pour valider votre vote.'
+    return
+  }
+
+  const success = await castVote(choiceId)
+  if (success) {
+    clearPendingChoiceId()
+    qrNotice.value = ''
+    if (route.path === '/vote') {
+      await router.replace({ path: '/', query: {} })
+    }
   }
 }
 
@@ -311,6 +359,7 @@ onMounted(async () => {
   const storedToken = window.localStorage.getItem('quizzy.token')
   const storedUser = window.localStorage.getItem('quizzy.username')
   const storedVoted = window.localStorage.getItem('quizzy.voted')
+  const storedPending = window.localStorage.getItem('quizzy.pendingChoiceId')
 
   if (storedToken) {
     authToken.value = storedToken
@@ -320,6 +369,12 @@ onMounted(async () => {
     await refreshResults()
     startPolling()
   }
+
+  if (storedPending) {
+    pendingChoiceId.value = Number(storedPending)
+  }
+
+  await ensureQrVote(pendingChoiceId.value)
 })
 
 onBeforeUnmount(() => {
@@ -331,6 +386,15 @@ watch(isVoteClosed, (closed) => {
     voteMessage.value = 'Le vote est terminé.'
   }
 })
+
+watch(
+  () => route.query.choiceId,
+  async (choiceIdValue) => {
+    const choiceId = getChoiceIdFromValue(choiceIdValue)
+    await ensureQrVote(choiceId)
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
