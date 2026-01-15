@@ -1,5 +1,5 @@
 const { Client } = require("pg");
-const { config } = require("../config");
+const { getConfig } = require("../config");
 
 const buildClientConfig = () => {
   if (process.env.DATABASE_URL) {
@@ -72,6 +72,8 @@ const initDb = async () => {
       )
     `);
 
+    const config = getConfig();
+
     for (const choice of config.choices) {
       await client.query(
         `
@@ -125,6 +127,8 @@ const getCurrentConfig = async () => {
       ORDER BY id
     `
   );
+
+  const config = getConfig();
 
   if (sessionResult.rowCount === 0) {
     return {
