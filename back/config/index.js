@@ -38,30 +38,40 @@ const resolveVoteEndsAt = () => {
   return "2026-01-10T10:30:00Z";
 };
 
-const voteEndsAt = resolveVoteEndsAt();
+const buildConfig = () => {
+  const voteEndsAt = resolveVoteEndsAt();
+  const choices = [
+    {
+      id: 1,
+      label: process.env.QR1_LABEL || "Choice 1",
+      qrCodeUrl: "/qrcodes/1"
+    },
+    {
+      id: 2,
+      label: process.env.QR2_LABEL || "Choice 2",
+      qrCodeUrl: "/qrcodes/2"
+    },
+    {
+      id: 3,
+      label: process.env.QR3_LABEL || "Choice 3",
+      qrCodeUrl: "/qrcodes/3"
+    }
+  ];
 
-const choices = [
-  {
-    id: 1,
-    label: process.env.QR1_LABEL || "Choice 1",
-    qrCodeUrl: "/qrcodes/1"
-  },
-  {
-    id: 2,
-    label: process.env.QR2_LABEL || "Choice 2",
-    qrCodeUrl: "/qrcodes/2"
-  },
-  {
-    id: 3,
-    label: process.env.QR3_LABEL || "Choice 3",
-    qrCodeUrl: "/qrcodes/3"
-  }
-];
+  return {
+    question: process.env.VOTE_QUESTION || "Choisissez votre option",
+    voteEndsAt,
+    choices
+  };
+};
 
-const config = {
-  question: process.env.VOTE_QUESTION || "Choisissez votre option",
-  voteEndsAt,
-  choices
+let config = buildConfig();
+
+const getConfig = () => config;
+
+const reloadConfig = () => {
+  config = buildConfig();
+  return config;
 };
 
 module.exports = {
@@ -69,7 +79,8 @@ module.exports = {
   JWT_SECRET,
   PUBLIC_FRONTEND_URL,
   QR_STORAGE_PATH,
-  config,
+  getConfig,
+  reloadConfig,
   parseDurationToMs,
   resolveVoteEndsAt
 };
