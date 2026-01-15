@@ -1,7 +1,7 @@
-const { Pool } = require("pg");
+const { Client } = require("pg");
 const { config } = require("../config");
 
-const buildPoolConfig = () => {
+const buildClientConfig = () => {
   if (process.env.DATABASE_URL) {
     return { connectionString: process.env.DATABASE_URL };
   }
@@ -15,12 +15,22 @@ const buildPoolConfig = () => {
   };
 };
 
-const pool = new Pool(buildPoolConfig());
+const client = new Client(buildClientConfig());
 
-const query = (text, params) => pool.query(text, params);
+const connect = async () => {
+  if (!client._connected) {
+    await client.connect();
+    client._connected = true;
+  }
+};
+
+const query = async (text, params) => {
+  await connect();
+  return client.query(text, params);
+};
 
 const initDb = async () => {
-  const client = await pool.connect();
+  await connect();
 
   try {
     await client.query("BEGIN");
@@ -42,25 +52,23 @@ const initDb = async () => {
     `);
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS votes (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        choice_id INTEGER NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE (user_id),
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (choice_id) REFERENCES choices(id)
+      )
+    `);
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS vote_session (
         id SERIAL PRIMARY KEY,
         question TEXT NOT NULL,
         starts_at TIMESTAMP NOT NULL,
         ends_at TIMESTAMP NOT NULL
-      )
-    `);
-
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS votes (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL,
-        choice_id INTEGER NOT NULL,
-        vote_session_id INTEGER NOT NULL,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        UNIQUE (user_id, vote_session_id),
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (choice_id) REFERENCES choices(id),
-        FOREIGN KEY (vote_session_id) REFERENCES vote_session(id)
       )
     `);
 
@@ -75,28 +83,23 @@ const initDb = async () => {
       );
     }
 
-    const sessionResult = await client.query(
+    await client.query(
       `
         INSERT INTO vote_session (question, starts_at, ends_at)
         VALUES ($1, NOW(), $2)
-        RETURNING id
       `,
       [config.question, config.voteEndsAt]
     );
 
     await client.query("COMMIT");
-
-    return sessionResult.rows[0].id;
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
-  } finally {
-    client.release();
   }
 };
 
 module.exports = {
-  pool,
+  client,
   query,
   initDb
 };

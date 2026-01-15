@@ -7,15 +7,12 @@ const router = express.Router();
 
 router.get("/results", authMiddleware, async (req, res) => {
   try {
-    const voteSessionId = req.app.locals.voteSessionId;
     const countsResult = await query(
       `
         SELECT choice_id, COUNT(*)::int AS count
         FROM votes
-        WHERE vote_session_id = $1
         GROUP BY choice_id
-      `,
-      [voteSessionId]
+      `
     );
 
     const countsMap = new Map(

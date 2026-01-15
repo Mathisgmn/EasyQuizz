@@ -51,16 +51,14 @@ router.post("/vote", async (req, res) => {
       return res.status(404).json({ error: "Choice not found" });
     }
 
-    const voteSessionId = req.app.locals.voteSessionId;
-
     await query(
       `
-        INSERT INTO votes (user_id, choice_id, vote_session_id)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (user_id, vote_session_id)
+        INSERT INTO votes (user_id, choice_id)
+        VALUES ($1, $2)
+        ON CONFLICT (user_id)
         DO UPDATE SET choice_id = EXCLUDED.choice_id, created_at = NOW()
       `,
-      [userResult.rows[0].id, choiceId, voteSessionId]
+      [userResult.rows[0].id, choiceId]
     );
 
     return res.json({ success: true });

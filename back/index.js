@@ -23,8 +23,7 @@ app.use(qrCodeRoutes);
 
 const startServer = async () => {
   try {
-    const voteSessionId = await initDb();
-    app.locals.voteSessionId = voteSessionId;
+    await initDb();
 
     app.listen(PORT, () => {
       console.log(`EasyQuizz backend running on port ${PORT}`);
