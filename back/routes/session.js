@@ -73,12 +73,32 @@ router.get("/session/reload", authMiddleware, async (req, res) => {
       override: true
     });
 
-    const question = String(process.env.VOTE_QUESTION || "").trim();
-    const choices = [
+    const envQuestion = String(process.env.VOTE_QUESTION || "").trim();
+    const envChoices = [
       { id: 1, label: String(process.env.QR1_LABEL || "").trim() },
       { id: 2, label: String(process.env.QR2_LABEL || "").trim() },
       { id: 3, label: String(process.env.QR3_LABEL || "").trim() }
     ];
+    const envNormalizedChoices = normalizeChoices(envChoices, []);
+    const currentConfig = await getCurrentConfig();
+    const fallbackChoices = currentConfig.choices?.length
+      ? currentConfig.choices
+      : config.choices;
+    const choices = envNormalizedChoices.length
+      ? envNormalizedChoices
+      : normalizeChoices(fallbackChoices, config.choices);
+    const question = String(
+      envQuestion || currentConfig.question || config.question || ""
+    ).trim();
+
+    if (!choices || choices.length === 0) {
+      return res.status(400).json({ error: "Missing vote choices" });
+    }
+
+    if (!question) {
+      return res.status(400).json({ error: "Missing vote question" });
+    }
+
     const voteEndsAt = resolveVoteEndsAt();
 
     await createVoteSession({ question, voteEndsAt, choices });
