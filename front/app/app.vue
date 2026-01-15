@@ -24,6 +24,7 @@
         <p class="muted">
           Créez un compte ou connectez-vous pour participer au sondage.
         </p>
+        <p v-if="authNotice" class="message">{{ authNotice }}</p>
         <form class="form" @submit.prevent="submitAuth">
           <label>
             Nom d'utilisateur
@@ -105,6 +106,7 @@ import { onBeforeUnmount, onMounted, reactive, ref, computed, watch } from 'vue'
 
 const config = useRuntimeConfig()
 const backendUrl = config.public.backendUrl
+const route = useRoute()
 
 const form = reactive({
   username: '',
@@ -120,6 +122,11 @@ const voteMessage = ref('')
 const hasVoted = ref(false)
 const pollingInterval = ref(null)
 const isRegisterMode = ref(true)
+const authNotice = computed(() => {
+  return typeof route.query.authMessage === 'string'
+    ? route.query.authMessage
+    : ''
+})
 
 const isVoteClosed = computed(() => {
   if (!pollConfig.value?.voteEndsAt) return false

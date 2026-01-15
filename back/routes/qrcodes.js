@@ -3,17 +3,15 @@ const fs = require("fs");
 const fsPromises = require("fs/promises");
 const path = require("path");
 const QRCode = require("qrcode");
-const { QR_STORAGE_PATH, config } = require("../config");
+const { PUBLIC_FRONTEND_URL, QR_STORAGE_PATH } = require("../config");
 const { query } = require("../db");
 
 const router = express.Router();
 
 const buildQrPayload = (choiceId) => {
-  const choice = config.choices.find((entry) => entry.id === choiceId);
-  return JSON.stringify({
-    choiceId,
-    label: choice?.label || `Choice ${choiceId}`
-  });
+  const payloadUrl = new URL("/vote", PUBLIC_FRONTEND_URL);
+  payloadUrl.searchParams.set("choiceId", String(choiceId));
+  return payloadUrl.toString();
 };
 
 const ensureQrCodeFile = async (choiceId) => {
