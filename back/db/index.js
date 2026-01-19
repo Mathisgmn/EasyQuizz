@@ -1,41 +1,25 @@
-const { Client } = require("pg");
+const { neon } = require("@neondatabase/serverless");
 const { getConfig } = require("../config");
 
-const buildClientConfig = () => {
-  if (process.env.DATABASE_URL) {
-    return { connectionString: process.env.DATABASE_URL };
+const getDatabaseUrl = () => {
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL is not set");
   }
 
-  return {
-    host: process.env.PGHOST || "db",
-    port: process.env.PGPORT ? Number(process.env.PGPORT) : 5432,
-    user: process.env.PGUSER || "postgres",
-    password: process.env.PGPASSWORD || "postgres",
-    database: process.env.PGDATABASE || "postgres"
-  };
+  return process.env.DATABASE_URL;
 };
 
-const client = new Client(buildClientConfig());
-
-const connect = async () => {
-  if (!client._connected) {
-    await client.connect();
-    client._connected = true;
-  }
-};
+const sql = neon(getDatabaseUrl());
 
 const query = async (text, params) => {
-  await connect();
-  return client.query(text, params);
+  return sql(text, params);
 };
 
 const initDb = async () => {
-  await connect();
-
   try {
-    await client.query("BEGIN");
+    await query("BEGIN");
 
-    await client.query(`
+    await query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         username VARCHAR(50) UNIQUE NOT NULL,
@@ -44,14 +28,14 @@ const initDb = async () => {
       )
     `);
 
-    await client.query(`
+    await query(`
       CREATE TABLE IF NOT EXISTS choices (
         id SERIAL PRIMARY KEY,
         label VARCHAR(50) NOT NULL
       )
     `);
 
-    await client.query(`
+    await query(`
       CREATE TABLE IF NOT EXISTS votes (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
@@ -63,7 +47,7 @@ const initDb = async () => {
       )
     `);
 
-    await client.query(`
+    await query(`
       CREATE TABLE IF NOT EXISTS vote_session (
         id SERIAL PRIMARY KEY,
         question TEXT NOT NULL,
@@ -75,7 +59,7 @@ const initDb = async () => {
     const config = getConfig();
 
     for (const choice of config.choices) {
-      await client.query(
+      await query(
         `
           INSERT INTO choices (id, label)
           VALUES ($1, $2)
@@ -85,7 +69,7 @@ const initDb = async () => {
       );
     }
 
-    const sessionResult = await client.query(
+    const sessionResult = await query(
       `
         SELECT 1
         FROM vote_session
@@ -94,7 +78,7 @@ const initDb = async () => {
     );
 
     if (sessionResult.rowCount === 0) {
-      await client.query(
+      await query(
         `
           INSERT INTO vote_session (question, starts_at, ends_at)
           VALUES ($1, NOW(), $2)
@@ -103,9 +87,9 @@ const initDb = async () => {
       );
     }
 
-    await client.query("COMMIT");
+    await query("COMMIT");
   } catch (error) {
-    await client.query("ROLLBACK");
+    await query("ROLLBACK");
     throw error;
   }
 };
@@ -154,16 +138,14 @@ const getCurrentConfig = async () => {
 };
 
 const createVoteSession = async ({ question, voteEndsAt, choices }) => {
-  await connect();
-
   try {
-    await client.query("BEGIN");
-    await client.query("TRUNCATE votes");
-    await client.query("TRUNCATE vote_session");
+    await query("BEGIN");
+    await query("TRUNCATE votes");
+    await query("TRUNCATE vote_session");
 
     const choiceIds = choices.map((choice) => choice.id);
     for (const choice of choices) {
-      await client.query(
+      await query(
         `
           INSERT INTO choices (id, label)
           VALUES ($1, $2)
@@ -177,7 +159,7 @@ const createVoteSession = async ({ question, voteEndsAt, choices }) => {
       const placeholders = choiceIds
         .map((_, index) => `$${index + 1}`)
         .join(", ");
-      await client.query(
+      await query(
         `
           DELETE FROM choices
           WHERE id NOT IN (${placeholders})
@@ -186,7 +168,7 @@ const createVoteSession = async ({ question, voteEndsAt, choices }) => {
       );
     }
 
-    await client.query(
+    await query(
       `
         INSERT INTO vote_session (question, starts_at, ends_at)
         VALUES ($1, NOW(), $2)
@@ -194,15 +176,14 @@ const createVoteSession = async ({ question, voteEndsAt, choices }) => {
       [question, voteEndsAt]
     );
 
-    await client.query("COMMIT");
+    await query("COMMIT");
   } catch (error) {
-    await client.query("ROLLBACK");
+    await query("ROLLBACK");
     throw error;
   }
 };
 
 module.exports = {
-  client,
   query,
   initDb,
   getCurrentConfig,
