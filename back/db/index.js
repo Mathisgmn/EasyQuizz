@@ -9,7 +9,7 @@ const getDatabaseUrl = () => {
   return process.env.DATABASE_URL;
 };
 
-const sql = neon(getDatabaseUrl());
+const sql = neon(getDatabaseUrl(), { fullResults: true });
 
 const query = async (text, params) => {
   return sql(text, params);

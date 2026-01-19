@@ -8,6 +8,8 @@ const router = express.Router();
 router.post("/register", async (req, res) => {
   const { username, password } = req.body || {};
 
+  console.info("Register attempt", { username });
+
   if (!username || !password) {
     return res.status(400).json({ error: "Missing credentials" });
   }
@@ -25,9 +27,11 @@ router.post("/register", async (req, res) => {
 
     const token = createToken(username);
 
+    console.info("Register success", { username });
     return res.json({ token });
   } catch (error) {
     if (error.code === "23505") {
+      console.warn("Register conflict", { username });
       return res.status(409).json({ error: "User already exists" });
     }
 
@@ -38,6 +42,8 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   const { username, password } = req.body || {};
+
+  console.info("Login attempt", { username });
 
   if (!username || !password) {
     return res.status(400).json({ error: "Missing credentials" });
@@ -56,11 +62,13 @@ router.post("/login", async (req, res) => {
     const user = result.rows[0];
 
     if (!user || !verifyPassword(password, user.password_hash)) {
+      console.warn("Login invalid credentials", { username });
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
     const token = createToken(username);
 
+    console.info("Login success", { username });
     return res.json({ token });
   } catch (error) {
     console.error("Error logging in", error);

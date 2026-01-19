@@ -5,6 +5,7 @@ const authMiddleware = (req, res, next) => {
   const [, token] = authHeader.split(" ");
 
   if (!token) {
+    console.warn("Auth middleware missing token");
     return res.status(401).json({ error: "Missing token" });
   }
 
@@ -12,6 +13,7 @@ const authMiddleware = (req, res, next) => {
     req.user = verifyToken(token);
     return next();
   } catch (error) {
+    console.warn("Auth middleware invalid token", { message: error.message });
     return res.status(401).json({ error: "Invalid token" });
   }
 };
