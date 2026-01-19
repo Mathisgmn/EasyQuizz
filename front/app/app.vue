@@ -105,7 +105,15 @@
 import { onBeforeUnmount, onMounted, reactive, ref, computed, watch } from 'vue'
 
 const config = useRuntimeConfig()
-const backendUrl = config.public.backendUrl
+const backendUrl = computed(() => {
+  if (config.public.backendUrl) {
+    return config.public.backendUrl
+  }
+  if (process.client) {
+    return window.location.origin
+  }
+  return ''
+})
 const route = useRoute()
 const router = useRouter()
 
@@ -159,7 +167,7 @@ const submitAuth = async () => {
 
   try {
     const endpoint = isRegisterMode.value ? 'register' : 'login'
-    const response = await fetch(`${backendUrl}/auth/${endpoint}`, {
+    const response = await fetch(`${backendUrl.value}/auth/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -223,7 +231,7 @@ const applyPollConfig = (nextConfig) => {
 
 const loadPollConfig = async () => {
   if (!authToken.value) return
-  const response = await fetch(`${backendUrl}/config`, {
+  const response = await fetch(`${backendUrl.value}/config`, {
     headers: {
       Authorization: `Bearer ${authToken.value}`
     }
@@ -241,7 +249,7 @@ const loadPollConfig = async () => {
 
 const refreshResults = async () => {
   if (!authToken.value) return
-  const response = await fetch(`${backendUrl}/results`, {
+  const response = await fetch(`${backendUrl.value}/results`, {
     headers: {
       Authorization: `Bearer ${authToken.value}`
     }
@@ -261,7 +269,7 @@ const castVote = async (choiceId) => {
   voteMessage.value = ''
 
   try {
-    const response = await fetch(`${backendUrl}/vote`, {
+    const response = await fetch(`${backendUrl.value}/vote`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
