@@ -9,10 +9,26 @@ const getDatabaseUrl = () => {
   return process.env.DATABASE_URL;
 };
 
-const sql = neon(getDatabaseUrl());
+const sql = neon(getDatabaseUrl(), { fullResults: true });
+
+const normalizeResult = (result) => {
+  if (result && typeof result === "object") {
+    if (Array.isArray(result.rows)) {
+      return result;
+    }
+    if ("rowCount" in result) {
+      return { rows: result.rows || [], rowCount: result.rowCount };
+    }
+  }
+  if (Array.isArray(result)) {
+    return { rows: result, rowCount: result.length };
+  }
+  return { rows: [], rowCount: 0 };
+};
 
 const query = async (text, params) => {
-  return sql(text, params);
+  const result = await sql(text, params);
+  return normalizeResult(result);
 };
 
 const initDb = async () => {

@@ -110,6 +110,10 @@ const backendUrl = computed(() => {
     return config.public.backendUrl
   }
   if (process.client) {
+    const { protocol, hostname, port } = window.location
+    if (port && port !== '8000') {
+      return `${protocol}//${hostname}:8000`
+    }
     return window.location.origin
   }
   return ''
@@ -167,6 +171,11 @@ const submitAuth = async () => {
 
   try {
     const endpoint = isRegisterMode.value ? 'register' : 'login'
+    console.info('Auth request', {
+      endpoint,
+      backendUrl: backendUrl.value,
+      username: form.username
+    })
     const response = await fetch(`${backendUrl.value}/auth/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -176,6 +185,11 @@ const submitAuth = async () => {
       })
     })
 
+    console.info('Auth response', {
+      endpoint,
+      status: response.status,
+      ok: response.ok
+    })
     const data = await response.json()
 
     if (!response.ok) {
@@ -237,6 +251,10 @@ const loadPollConfig = async () => {
     }
   })
 
+  console.info('Config response', {
+    status: response.status,
+    ok: response.ok
+  })
   if (!response.ok) {
     authError.value = 'Session expirée, reconnectez-vous.'
     logout()
