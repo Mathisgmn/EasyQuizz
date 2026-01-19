@@ -110,6 +110,10 @@ const backendUrl = computed(() => {
     return config.public.backendUrl
   }
   if (process.client) {
+    const { protocol, hostname, port } = window.location
+    if (port && port !== '8000') {
+      return `${protocol}//${hostname}:8000`
+    }
     return window.location.origin
   }
   return ''
